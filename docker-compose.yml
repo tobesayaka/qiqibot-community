@@ -1,0 +1,27 @@
+services:
+  napcat:
+    image: mlikiowa/napcat-docker:v4.18.19
+    container_name: napcat
+    restart: unless-stopped
+    ports:
+      - "6099:6099"   # NapCat WebUI
+      - "3001:3001"   # WebSocket
+    volumes:
+      - ./napcat/config:/app/napcat/config
+      - ./napcat/plugins:/app/napcat/plugins
+      - ./napcat/QQ:/app/.config/QQ
+    environment:
+      - NAPCAT_UID=${NAPCAT_UID}
+      - NAPCAT_GID=${NAPCAT_GID}
+
+  bot:
+    build: .
+    container_name: qiqibot
+    restart: unless-stopped
+    depends_on:
+      - napcat
+    volumes:
+      - ./data:/app/data
+      - ./downloads:/app/downloads
+    env_file:
+      - .env

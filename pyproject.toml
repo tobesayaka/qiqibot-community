@@ -1,0 +1,39 @@
+[project]
+name = "qiqibot"
+version = "0.1.0"
+description = "A QQ chatbot built with NoneBot2 and NapCatQQ"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "aiosqlite>=0.22.1",
+    "brotli>=1.2.0",
+    "greenlet>=3.5.5",
+    "grpcio-tools>=1.83.0",
+    "httpx>=0.27.0",
+    "nonebot-adapter-onebot>=2.4.6",
+    "nonebot-plugin-localstore>=0.7.4",
+    "nonebot2[fastapi]>=2.5.0,<3.0.0",
+    "pillow>=12.3.0",
+    "playwright>=1.62.0",
+    "pyyaml>=6.0.3",
+    "sqlalchemy>=2.0.52",
+    "uvicorn>=0.52.3",
+    "yt-dlp>=2024.1.0",
+]
+
+[dependency-groups]
+dev = [
+    "pyright[nodejs]>=1.1.411",
+    "ruff>=0.16.3",
+]
+
+[tool.nonebot]
+plugins = []
+plugin_dirs = ["plugins", "middlewares"]
+builtin_plugins = []
+
+[tool.ruff.lint]
+extend-select = [
+    "UP",  # pyupgrade
+    "I",   # isort
+]
