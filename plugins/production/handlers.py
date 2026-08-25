@@ -68,7 +68,7 @@ _STAT_NAME_MAP = {
 prd_id = on_regex(r"\Aprd\s+(\d+)\Z", priority=14, block=True, rule=is_allowed())
 
 # prd <关键词> → 模糊搜索
-prd_search = on_regex(r"\Aprd\s+(\D.+)\Z", priority=15, block=True, rule=is_allowed())
+prd_search = on_regex(r"\Aprd\s+(\D.*)\Z", priority=15, block=True, rule=is_allowed())
 
 
 @prd_id.handle()

@@ -32,7 +32,7 @@ _WARN_COLOR = (255, 80, 80)
 opt_id = on_regex(r"\Aopt\s+(\d+)\Z", priority=14, block=True, rule=is_allowed())
 
 # opt <关键词> → 模糊搜索
-opt_search = on_regex(r"\Aopt\s+(\D.+)\Z", priority=15, block=True, rule=is_allowed())
+opt_search = on_regex(r"\Aopt\s+(\D.*)\Z", priority=15, block=True, rule=is_allowed())
 
 
 @opt_id.handle()

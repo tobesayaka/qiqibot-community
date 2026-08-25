@@ -94,7 +94,7 @@ _STAT_NAME_MAP = {
 up_id = on_regex(r"\Aup\s+(\d+)\Z", priority=14, block=True, rule=is_allowed())
 
 # up <关键词> → 模糊搜索
-up_search = on_regex(r"\Aup\s+(\D.+)\Z", priority=15, block=True, rule=is_allowed())
+up_search = on_regex(r"\Aup\s+(\D.*)\Z", priority=15, block=True, rule=is_allowed())
 
 _DB_CONN: sqlite3.Connection | None = None
 

@@ -24,6 +24,8 @@ data/*
 !data/optionset.db
 !data/production.db
 !data/item_upgrade.db
+!data/title.db
+!data/totem.db
 
 # OS
 .DS_Store

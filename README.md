@@ -118,6 +118,26 @@ docker compose down
 
 详情以表格图片返回，含装备图标、描述、改造项列表（名称、消耗、属性、槽位指示圆点）。
 
+### 头衔查询（Title）
+
+查询洛奇游戏头衔信息，含效果描述、类型分类、头衔图片，数据来自 prilus 资源服务器。
+
+| 操作 | 触发方式 |
+|------|---------|
+| 搜索 | `title <关键词>`，如 `title 勇者` |
+| 通配符搜索 | `title 勇*者`，用 `*` 作通配符 |
+| 精准查询 | `title <id>`，如 `title 11072` |
+
+### 图腾查询（Totem）
+
+查询洛奇游戏图腾信息，含属性加成、类型分类、图片，数据来自 prilus 资源服务器。
+
+| 操作 | 触发方式 |
+|------|---------|
+| 搜索 | `totem <关键词>`，如 `totem 攻击` |
+| 通配符搜索 | `totem *纪念币`，用 `*` 作通配符 |
+| 精准查询 | `totem <id>`，如 `totem 52358` |
+
 ### 白名单权限控制
 
 所有插件受白名单控制，只有 `config/allowlist.yml` 中的 QQ 用户/QQ 群才能触发。
@@ -168,17 +188,24 @@ qiqibot/
 │   ├── video/                    # 视频下载插件
 │   ├── optionset/                # 游戏道具查询插件
 │   ├── production/               # 制作配方查询插件
-│   └── item_upgrade/             # 装备改造查询插件
+│   ├── item_upgrade/             # 装备改造查询插件
+│   ├── title/                    # 头衔查询插件
+│   ├── totem/                    # 图腾查询插件
+│   └── help/                     # 使用帮助插件
 ├── utils/
 │   ├── optionset.py              # 道具 DB 查询
 │   ├── production.py             # 配方 DB 查询
 │   ├── item_upgrade.py           # 装备改造 DB 查询
+│   ├── title.py                  # 头衔 DB 查询
+│   ├── totem.py                  # 图腾 DB 查询
 │   ├── permission.py             # 白名单权限控制
 │   └── video.py                  # yt-dlp 下载工具
 ├── data/
 │   ├── optionset.db              # 道具数据（1821 条附魔）
 │   ├── production.db             # 配方数据（1251 条配方 + 3200+ 物品图片）
-│   └── item_upgrade.db           # 改造数据（4594 可改造物品 + 3239 改造项 + 装备图片）
+│   ├── item_upgrade.db           # 改造数据（4594 可改造物品 + 3239 改造项 + 装备图片）
+│   ├── title.db                  # 头衔数据（1894 条头衔 + 头衔图片）
+│   └── totem.db                  # 图腾数据（228 个图腾 + 图腾图片）
 ```
 
 ## 插件开发
