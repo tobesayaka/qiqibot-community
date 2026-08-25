@@ -26,6 +26,7 @@ data/*
 !data/item_upgrade.db
 !data/title.db
 !data/totem.db
+!data/miniature.db
 
 # OS
 .DS_Store

@@ -191,6 +191,7 @@ qiqibot/
 │   ├── item_upgrade/             # 装备改造查询插件
 │   ├── title/                    # 头衔查询插件
 │   ├── totem/                    # 图腾查询插件
+│   ├── miniature/                # 农场物查询插件
 │   └── help/                     # 使用帮助插件
 ├── utils/
 │   ├── optionset.py              # 道具 DB 查询
@@ -198,6 +199,7 @@ qiqibot/
 │   ├── item_upgrade.py           # 装备改造 DB 查询
 │   ├── title.py                  # 头衔 DB 查询
 │   ├── totem.py                  # 图腾 DB 查询
+│   ├── miniature.py              # 农场物 DB 查询
 │   ├── permission.py             # 白名单权限控制
 │   └── video.py                  # yt-dlp 下载工具
 ├── data/
@@ -205,7 +207,8 @@ qiqibot/
 │   ├── production.db             # 配方数据（1251 条配方 + 3200+ 物品图片）
 │   ├── item_upgrade.db           # 改造数据（4594 可改造物品 + 3239 改造项 + 装备图片）
 │   ├── title.db                  # 头衔数据（1894 条头衔 + 头衔图片）
-│   └── totem.db                  # 图腾数据（228 个图腾 + 图腾图片）
+│   ├── totem.db                  # 图腾数据（228 个图腾 + 图腾图片）
+│   └── miniature.db              # 农场物数据（252 个农场物 + 图片）
 ```
 
 ## 插件开发

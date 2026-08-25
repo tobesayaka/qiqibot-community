@@ -27,11 +27,12 @@ _DIM = (130, 130, 135)
 # 每个 section: (title, [(cmd, desc, [examples])])
 SECTIONS = [
     ("游戏数据查询", [
-        ("opt <关键词/ID>", "查询释放卷轴道具", ["opt 暴风", "opt 10709"]),
+        ("opt <关键词/ID>", "查询释放卷轴道具", ["opt 苍白", "opt 10709"]),
         ("prd <关键词/ID>", "查询装备打造配方", ["prd 释魂 琴", "prd 释魂*琴", "prd 13814"]),
         ("up <关键词/ID>", "查询装备改造方案", ["up 释魂 弓", "up 释魂*弓", "up 1040054"]),
-        ("title <关键词/ID>", "查询头衔信息", ["title 勇者", "title 11072"]),
-        ("totem <关键词/ID>", "查询图腾信息", ["totem 攻击", "totem 52358"]),
+        ("title <关键词/ID>", "查询头衔信息", ["title 深渊", "title 11072"]),
+        ("totem <关键词/ID>", "查询图腾信息", ["totem 学会", "totem 52358"]),
+        ("mini <关键词/ID>", "查询农场物信息", ["mini 英雄", "mini 155"]),
     ]),
     ("问答知识库", [
         ("记一下", "添加问答（交互式引导）", []),
@@ -88,7 +89,7 @@ def _render_help() -> str:
     y = _PAD
 
     # 标题
-    draw.text((_PAD, y), "QiqiBot 使用指南", fill=_TITLE, font=ImageFont.truetype(_FONT, 20))
+    draw.text((_PAD, y), "QiQiBot 使用指南", fill=_TITLE, font=ImageFont.truetype(_FONT, 20))
     y += _LINE_H + _GAP
 
     for si, (section_title, items) in enumerate(SECTIONS):
@@ -122,7 +123,7 @@ def _render_help() -> str:
 
 
 help_cmd = on_regex(
-    r"\A(help|帮助|怎么用|指令列表|使用方法|使用说明)\Z",
+    r"\A(help)\Z",
     priority=20,
     block=True,
     rule=is_allowed(),
