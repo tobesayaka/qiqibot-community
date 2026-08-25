@@ -1,6 +1,7 @@
-# QiqiBot
+# QiQiBot
 
 基于 NoneBot2 + NapCatQQ 的 QQ 机器人。
+
 用于 Mabinogi CN服
 
 ## 技术栈
