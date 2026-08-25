@@ -23,6 +23,7 @@ nonebot.log
 data/*
 !data/optionset.db
 !data/production.db
+!data/item_upgrade.db
 
 # OS
 .DS_Store
