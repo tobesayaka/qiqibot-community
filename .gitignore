@@ -27,6 +27,7 @@ data/*
 !data/title.db
 !data/totem.db
 !data/miniature.db
+!data/erinn.db
 
 # OS
 .DS_Store
