@@ -8,8 +8,9 @@ from nonebot.adapters.onebot.v11 import MessageEvent, MessageSegment
 from nonebot.typing import T_State
 from PIL import Image, ImageDraw, ImageFont
 
-from utils.title import get_title, get_title_image, search_titles
+from utils.config import GlobalConfig
 from utils.permission import is_allowed
+from utils.title import get_title, get_title_image, search_titles
 
 from .config import Config
 
@@ -19,6 +20,10 @@ try:
     config = get_plugin_config(Config)
 except (ValueError, RuntimeError):
     config = Config()
+try:
+    global_cfg = get_plugin_config(GlobalConfig)
+except (ValueError, RuntimeError):
+    global_cfg = GlobalConfig()
 
 _FONT_SIZE = 18
 _LINE_SPACING = 6
@@ -73,7 +78,7 @@ async def handle_title_search(event: MessageEvent, state: T_State):
 
 async def _render(info: dict) -> str:
     """渲染头衔信息为图片，返回 base64 data URI。"""
-    font = ImageFont.truetype(config.title_font, _FONT_SIZE)
+    font = ImageFont.truetype(global_cfg.qiqibot_font, _FONT_SIZE)
 
     title_img_b64 = await get_title_image(info["id"])
     icon = None
@@ -81,7 +86,7 @@ async def _render(info: dict) -> str:
         try:
             raw = base64.b64decode(title_img_b64)
             icon = Image.open(io.BytesIO(raw)).convert("RGBA")
-        except Exception:
+        except (OSError, ValueError):
             pass
 
     tmp = Image.new("RGB", (1, 1))

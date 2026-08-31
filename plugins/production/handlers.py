@@ -11,8 +11,9 @@ from nonebot.adapters.onebot.v11 import MessageEvent, MessageSegment
 from nonebot.typing import T_State
 from PIL import Image, ImageDraw, ImageFont
 
-from utils.production import get_production, search_productions
+from utils.config import GlobalConfig
 from utils.permission import is_allowed
+from utils.production import get_production, search_productions
 
 from .config import Config
 
@@ -22,6 +23,10 @@ try:
     config = get_plugin_config(Config)
 except (ValueError, RuntimeError):
     config = Config()
+try:
+    global_cfg = get_plugin_config(GlobalConfig)
+except (ValueError, RuntimeError):
+    global_cfg = GlobalConfig()
 
 _FONT_SIZE = 20
 _MAT_ICON = 32
@@ -128,7 +133,7 @@ def _load_icon(item_id: int, size: int | None = None) -> Image.Image | None:
                 Image.Resampling.LANCZOS,
             )
         return img
-    except Exception:
+    except (OSError, ValueError):
         return None
 
 
@@ -154,7 +159,7 @@ def _get_mat_recipe(item_id: int) -> str | None:
 
 def _render(prod: dict) -> str:
     """渲染制作配方为图片，返回 base64 data URI。"""
-    font = ImageFont.truetype(config.production_font, _FONT_SIZE)
+    font = ImageFont.truetype(global_cfg.qiqibot_font, _FONT_SIZE)
     icon = _load_icon(prod["item_id"])
 
     materials: list[dict] = json.loads(prod["materials"])

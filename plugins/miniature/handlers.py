@@ -8,6 +8,7 @@ from nonebot.adapters.onebot.v11 import MessageEvent, MessageSegment
 from nonebot.typing import T_State
 from PIL import Image, ImageDraw, ImageFont
 
+from utils.config import GlobalConfig
 from utils.miniature import get_miniature, get_miniature_image, search_miniatures
 from utils.permission import is_allowed
 
@@ -19,6 +20,10 @@ try:
     config = get_plugin_config(Config)
 except (ValueError, RuntimeError):
     config = Config()
+try:
+    global_cfg = get_plugin_config(GlobalConfig)
+except (ValueError, RuntimeError):
+    global_cfg = GlobalConfig()
 
 _FONT_SIZE = 18
 _LINE_SPACING = 6
@@ -77,13 +82,13 @@ async def _load_icon(mini_id: int) -> Image.Image | None:
     try:
         raw = base64.b64decode(b64)
         return Image.open(io.BytesIO(raw)).convert("RGBA")
-    except Exception:
+    except (OSError, ValueError):
         return None
 
 
 async def _render(info: dict) -> str:
     """渲染农场物信息为图片，返回 base64 data URI。"""
-    font = ImageFont.truetype(config.miniature_font, _FONT_SIZE)
+    font = ImageFont.truetype(global_cfg.qiqibot_font, _FONT_SIZE)
     icon = await _load_icon(info["id"])
 
     tmp = Image.new("RGB", (1, 1))

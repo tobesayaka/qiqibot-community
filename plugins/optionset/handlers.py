@@ -8,6 +8,7 @@ from nonebot.adapters.onebot.v11 import MessageEvent, MessageSegment
 from nonebot.typing import T_State
 from PIL import Image, ImageDraw, ImageFont
 
+from utils.config import GlobalConfig
 from utils.optionset import get_item, search_items
 from utils.permission import is_allowed
 
@@ -19,6 +20,10 @@ try:
     config = get_plugin_config(Config)
 except (ValueError, RuntimeError):
     config = Config()
+try:
+    global_cfg = get_plugin_config(GlobalConfig)
+except (ValueError, RuntimeError):
+    global_cfg = GlobalConfig()
 
 _FONT_SIZE = 22
 _LINE_SPACING = 8
@@ -71,7 +76,7 @@ def _render_item(item: dict) -> str:
     desc = item.get("desc", "")
     item_id = item.get("id", "")
 
-    font = ImageFont.truetype(config.optionset_font, _FONT_SIZE)
+    font = ImageFont.truetype(global_cfg.qiqibot_font, _FONT_SIZE)
 
     # 组装所有行: (text, color)
     styled_lines: list[tuple[str, tuple[int, int, int]]] = [

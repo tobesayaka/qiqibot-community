@@ -8,9 +8,16 @@ from nonebot.adapters.onebot.v11 import MessageEvent, MessageSegment
 from nonebot.typing import T_State
 from PIL import Image, ImageDraw, ImageFont
 
+from utils.config import GlobalConfig
 from utils.permission import is_allowed
 
-_FONT = "/Users/ming/Library/Fonts/NotoSansSC.ttf"
+try:
+    from nonebot import get_plugin_config
+
+    global_cfg = get_plugin_config(GlobalConfig)
+except (ValueError, RuntimeError):
+    global_cfg = GlobalConfig()
+
 _FONT_SIZE = 16
 _LINE_H = 26
 _PAD = 20
@@ -26,36 +33,60 @@ _DIM = (130, 130, 135)
 
 # 每个 section: (title, [(cmd, desc, [examples])])
 SECTIONS = [
-    ("游戏数据查询", [
-        ("opt <关键词/ID>", "查询释放卷轴道具", ["opt 苍白", "opt 10709"]),
-        ("prd <关键词/ID>", "查询装备打造配方", ["prd 释魂 琴", "prd 释魂*琴", "prd 13814"]),
-        ("up <关键词/ID>", "查询装备改造方案", ["up 释魂 弓", "up 释魂*弓", "up 1040054"]),
-        ("title <关键词/ID>", "查询头衔信息", ["title 深渊", "title 11072"]),
-        ("totem <关键词/ID>", "查询图腾信息", ["totem 学会", "totem 52358"]),
-        ("mini <关键词/ID>", "查询农场物信息", ["mini 英雄", "mini 155"]),
-    ]),
-    ("问答知识库", [
-        ("qa 问题|答案", "添加问答", ["qa 布本攻略|先打abc再打defg"]),
-        ("qa <关键词>", "搜索问答", ["qa 布本攻略"]),
-        ("#<N>", "查看第N条问答", ["#3"]),
-        ("qa edit <N>|答案", "编辑第N条的答案", ["qa edit 3|新答案"]),
-        ("qa del <N>", "删除第N条问答", ["qa del 3"]),
-    ]),
-    ("爱琳配方百科", [
-        ("erinn <关键词>", "搜索制作配方", ["erinn 金属板甲"]),
-        ("erinn <ID>", "按ID查看配方", ["erinn 13006"]),
-    ]),
-    ("其他功能", [
-        ("复读 <内容>", "机器人原样回复", ["复读 你好世界"]),
-        ("下载 <链接>", "下载视频（抖音/B站/YouTube）", ["下载 https://v.douyin.com/xxx"]),
-        ("帮助 / help", "显示本帮助信息", []),
-    ]),
+    (
+        "游戏数据查询",
+        [
+            ("opt <关键词/ID>", "查询释放卷轴道具", ["opt 苍白", "opt 10709"]),
+            (
+                "prd <关键词/ID>",
+                "查询装备打造配方",
+                ["prd 释魂 琴", "prd 释魂*琴", "prd 13814"],
+            ),
+            (
+                "up <关键词/ID>",
+                "查询装备改造方案",
+                ["up 释魂 弓", "up 释魂*弓", "up 1040054"],
+            ),
+            ("title <关键词/ID>", "查询头衔信息", ["title 深渊", "title 11072"]),
+            ("totem <关键词/ID>", "查询图腾信息", ["totem 学会", "totem 52358"]),
+            ("mini <关键词/ID>", "查询农场物信息", ["mini 英雄", "mini 155"]),
+        ],
+    ),
+    (
+        "问答知识库",
+        [
+            ("qa 问题|答案", "添加问答", ["qa 布本攻略|先打abc再打defg"]),
+            ("qa <关键词>", "搜索问答", ["qa 布本攻略"]),
+            ("#<N>", "查看第N条问答", ["#3"]),
+            ("qa edit <N>|答案", "编辑第N条的答案", ["qa edit 3|新答案"]),
+            ("qa del <N>", "删除第N条问答", ["qa del 3"]),
+        ],
+    ),
+    (
+        "爱琳配方百科",
+        [
+            ("erinn <关键词>", "搜索制作配方", ["erinn 金属板甲"]),
+            ("erinn <ID>", "按ID查看配方", ["erinn 13006"]),
+        ],
+    ),
+    (
+        "其他功能",
+        [
+            ("复读 <内容>", "机器人原样回复", ["复读 你好世界"]),
+            (
+                "下载 <链接>",
+                "下载视频（抖音/B站/YouTube）",
+                ["下载 https://v.douyin.com/xxx"],
+            ),
+            ("帮助 / help", "显示本帮助信息", []),
+        ],
+    ),
 ]
 
 
 def _render_help() -> str:
-    font = ImageFont.truetype(_FONT, _FONT_SIZE)
-    small_font = ImageFont.truetype(_FONT, _FONT_SIZE - 2)
+    font = ImageFont.truetype(global_cfg.qiqibot_font, _FONT_SIZE)
+    small_font = ImageFont.truetype(global_cfg.qiqibot_font, _FONT_SIZE - 2)
 
     tmp = Image.new("RGB", (1, 1))
     td = ImageDraw.Draw(tmp)
@@ -91,7 +122,9 @@ def _render_help() -> str:
     y = _PAD
 
     # 标题
-    draw.text((_PAD, y), "QiQiBot 使用指南", fill=_TITLE, font=ImageFont.truetype(_FONT, 20))
+    draw.text(
+        (_PAD, y), "QiQiBot 使用指南", fill=_TITLE, font=ImageFont.truetype(global_cfg.qiqibot_font, 20)
+    )
     y += _LINE_H + _GAP
 
     for si, (section_title, items) in enumerate(SECTIONS):

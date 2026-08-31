@@ -8,6 +8,7 @@ COPY pyproject.toml bot.py ./
 COPY plugins/ plugins/
 COPY middlewares/ middlewares/
 COPY utils/ utils/
+COPY assets/ assets/
 
 RUN uv venv .venv && \
     uv pip install --python .venv/bin/python \
@@ -15,6 +16,8 @@ RUN uv venv .venv && \
     "nonebot-adapter-onebot>=2.4.6" \
     "nonebot-plugin-localstore>=0.7.4" \
     "nonebot2[fastapi]>=2.5.0,<3.0.0" \
+    pillow \
+    pyyaml \
     "sqlalchemy>=2.0.52" \
     uvicorn \
     yt-dlp

@@ -10,7 +10,8 @@ from nonebot.adapters.onebot.v11 import MessageEvent, MessageSegment
 from nonebot.typing import T_State
 from PIL import Image, ImageDraw, ImageFont
 
-from utils.item_upgrade import get_item_image, get_item_upgrades, search_item_upgrades
+from utils.config import GlobalConfig
+from utils.item_upgrade import get_item_upgrades, search_item_upgrades
 from utils.permission import is_allowed
 
 from .config import Config
@@ -21,6 +22,10 @@ try:
     config = get_plugin_config(Config)
 except (ValueError, RuntimeError):
     config = Config()
+try:
+    global_cfg = get_plugin_config(GlobalConfig)
+except (ValueError, RuntimeError):
+    global_cfg = GlobalConfig()
 
 _FONT_SIZE = 18
 _LINE_SPACING = 8
@@ -181,7 +186,7 @@ def _load_icon(item_id: int) -> Image.Image | None:
     try:
         raw = base64.b64decode(row[0])
         return Image.open(io.BytesIO(raw)).convert("RGBA")
-    except Exception:
+    except (OSError, ValueError):
         return None
 
 
@@ -277,7 +282,7 @@ def _prepare_upgrade_rows(upgrades: list[dict]) -> list[dict]:
 
 def _render(info: dict) -> str:
     """渲染装备改造信息为表格图片，返回 base64 data URI。"""
-    font = ImageFont.truetype(config.item_upgrade_font, _FONT_SIZE)
+    font = ImageFont.truetype(global_cfg.qiqibot_font, _FONT_SIZE)
     icon = _load_icon(info["item_id"])
 
     upgrade_max = info["upgrade_max"]

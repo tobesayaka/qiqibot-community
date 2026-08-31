@@ -56,10 +56,16 @@ def _normalize(text: str) -> str:
 
 @event_preprocessor
 async def _strip_invisible(event: MessageEvent):
+    """全局预处理：清理不可见 Unicode 字符和全角符号。
+
+    放在 QA 插件中是因为 QA 触发词（qa、#）最常受全角/零宽字符影响，
+    但清理对所有插件都有益。
+    """
     for seg in event.message:
         if seg.type == "text":
             raw = seg.data.get("text", "")
             cleaned = _normalize(raw)
+            # 只在实际包含不可见字符或全角符号时才修改
             if cleaned != raw:
                 seg.data["text"] = cleaned
 
@@ -207,11 +213,13 @@ async def handle_qa_read(event: MessageEvent, state: T_State, matcher: Matcher):
         await qa_read.reject("给个关键词吧")
 
     # 如果有活跃的搜索结果，且用户输入 #id，按 id 从结果中选择
-    search_results = state.get("search_results")
-    if search_results and raw.startswith("#") and raw[1:].isdigit():
+    search_ids = state.get("search_ids")
+    if search_ids and raw.startswith("#") and raw[1:].isdigit():
         pick_id = int(raw[1:])
-        for item in search_results:
-            if item.id == pick_id:
+        if pick_id in search_ids:
+            async with async_session() as session:
+                item = await session.get(QA, pick_id)
+            if item:
                 state.clear()
                 await qa_read.finish(_build_answer_msg(item))
         state.clear()
@@ -243,6 +251,6 @@ async def handle_qa_read(event: MessageEvent, state: T_State, matcher: Matcher):
 
     # 多条结果 → 列出列表，暂停等待用户选择
     lines = [it.format_short() for it in items]
-    state["search_results"] = items
+    state["search_ids"] = [it.id for it in items]
     await matcher.send(f"搜到了这些（{raw}）：\n" + "\n".join(lines))
     await matcher.pause("输入 #编号 查看详情")

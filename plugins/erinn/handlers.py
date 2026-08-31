@@ -3,15 +3,23 @@ from __future__ import annotations
 import base64
 import io
 import json
-import sqlite3
-from pathlib import Path
 
 from nonebot import on_regex
 from nonebot.adapters.onebot.v11 import MessageEvent, MessageSegment
 from nonebot.typing import T_State
 from PIL import Image, ImageDraw, ImageFont
 
-from utils.erinn import search_items
+from utils.config import GlobalConfig
+from utils.erinn import (
+    get_item_image_b64,
+    get_npc_image_b64,
+    get_skill_image_b64,
+    query_all,
+    search_items,
+)
+from utils.erinn import (
+    get_item_name as _get_item_name,
+)
 from utils.permission import is_allowed
 
 from .config import Config
@@ -22,6 +30,10 @@ try:
     config = get_plugin_config(Config)
 except (ValueError, RuntimeError):
     config = Config()
+try:
+    global_cfg = get_plugin_config(GlobalConfig)
+except (ValueError, RuntimeError):
+    global_cfg = GlobalConfig()
 
 # ── 布局常量 ──────────────────────────────────────────
 
@@ -43,45 +55,18 @@ WHITE = (255, 255, 255)
 GOLD_TEXT = (255, 215, 0)
 DIM_TEXT = (160, 160, 160)
 
-_FONT_PATH = "/Users/ming/Library/Fonts/NotoSansSC.ttf"
 
 _CRAFT_ROW_H = ICON_SIZE + 22 + 16
-
-# ── DB ────────────────────────────────────────────────
-
-_DB_CONN: sqlite3.Connection | None = None
-
-
-def _get_db() -> sqlite3.Connection:
-    global _DB_CONN
-    if _DB_CONN is None:
-        _DB_CONN = sqlite3.connect(str(Path("data/erinn.db")))
-        _DB_CONN.row_factory = sqlite3.Row
-    return _DB_CONN
-
-
-def _q(sql: str, params: tuple = ()) -> tuple | None:
-    return _get_db().execute(sql, params).fetchone()
-
-
-def _qa(sql: str, params: tuple = ()) -> list:
-    return _get_db().execute(sql, params).fetchall()
-
-
-def _get_item_name(item_id: int) -> str:
-    row = _q("SELECT name FROM items WHERE item_id = ?", (item_id,))
-    return row[0] if row else f"ID:{item_id}"
-
 
 # ── 图标加载 ──────────────────────────────────────────
 
 
 def _load_icon(item_id: int, size: int = ICON_SIZE) -> Image.Image | None:
-    row = _q("SELECT image_b64 FROM item_images WHERE item_id = ?", (item_id,))
-    if not row:
+    b64 = get_item_image_b64(item_id)
+    if not b64:
         return None
     try:
-        raw = base64.b64decode(row[0])
+        raw = base64.b64decode(b64)
         src = Image.open(io.BytesIO(raw)).convert("RGBA")
         ratio = (size - 2) / max(src.width, src.height)
         sw, sh = int(src.width * ratio), int(src.height * ratio)
@@ -89,21 +74,16 @@ def _load_icon(item_id: int, size: int = ICON_SIZE) -> Image.Image | None:
         canvas = Image.new("RGBA", (size, size), (0, 0, 0, 0))
         canvas.paste(scaled, ((size - sw) // 2, (size - sh) // 2), scaled)
         return canvas
-    except Exception:  # noqa: BLE001
+    except (OSError, ValueError):
         return None
 
 
 def _load_skill_icon(skill_en: str) -> Image.Image | None:
-    row = _q(
-        "SELECT si.image_b64 FROM skills s "
-        "LEFT JOIN skill_images si ON s.skill_id = si.skill_id "
-        "WHERE s.name_en = ?",
-        (skill_en,),
-    )
-    if not row or not row[0]:
+    b64 = get_skill_image_b64(skill_en)
+    if not b64:
         return None
     try:
-        raw = base64.b64decode(row[0])
+        raw = base64.b64decode(b64)
         src = Image.open(io.BytesIO(raw)).convert("RGBA")
         ratio = (SKILL_ICON - 2) / max(src.width, src.height)
         sw, sh = int(src.width * ratio), int(src.height * ratio)
@@ -111,16 +91,16 @@ def _load_skill_icon(skill_en: str) -> Image.Image | None:
         canvas = Image.new("RGBA", (SKILL_ICON, SKILL_ICON), (0, 0, 0, 0))
         canvas.paste(scaled, ((SKILL_ICON - sw) // 2, (SKILL_ICON - sh) // 2), scaled)
         return canvas
-    except Exception:  # noqa: BLE001
+    except (OSError, ValueError):
         return None
 
 
 def _load_npc_icon(npc_id: int) -> Image.Image | None:
-    row = _q("SELECT image_b64 FROM npc_images WHERE npc_id = ?", (npc_id,))
-    if not row:
+    b64 = get_npc_image_b64(npc_id)
+    if not b64:
         return None
     try:
-        raw = base64.b64decode(row[0])
+        raw = base64.b64decode(b64)
         src = Image.open(io.BytesIO(raw)).convert("RGBA")
         ratio = (NPC_ICON - 2) / max(src.width, src.height)
         sw, sh = int(src.width * ratio), int(src.height * ratio)
@@ -128,7 +108,7 @@ def _load_npc_icon(npc_id: int) -> Image.Image | None:
         canvas = Image.new("RGBA", (NPC_ICON, NPC_ICON), (0, 0, 0, 0))
         canvas.paste(scaled, ((NPC_ICON - sw) // 2, (NPC_ICON - sh) // 2), scaled)
         return canvas
-    except Exception:  # noqa: BLE001
+    except (OSError, ValueError):
         return None
 
 
@@ -138,7 +118,7 @@ _MAX_DEPTH = 3
 
 
 def _get_all_recipes(item_id: int) -> list[dict]:
-    rows = _qa(
+    rows = query_all(
         "SELECT * FROM recipes WHERE item_id = ? ORDER BY skill_name", (item_id,)
     )
     return [dict(r) for r in rows]
@@ -186,7 +166,7 @@ def _split_recipe(recipe_data: list) -> tuple[list[dict], list[dict]]:
 
 
 def _get_acquisitions(item_id: int) -> list[dict]:
-    rows = _qa("SELECT * FROM acquisitions WHERE item_id = ?", (item_id,))
+    rows = query_all("SELECT * FROM acquisitions WHERE item_id = ?", (item_id,))
     return [dict(r) for r in rows]
 
 
@@ -491,8 +471,8 @@ async def _render(item_id: int) -> str | None:
     if not tree:
         return None
 
-    font = ImageFont.truetype(_FONT_PATH, 14)
-    small_font = ImageFont.truetype(_FONT_PATH, 12)
+    font = ImageFont.truetype(global_cfg.qiqibot_font, 14)
+    small_font = ImageFont.truetype(global_cfg.qiqibot_font, 12)
 
     # 预计算总高度
     total_h = BORDER * 2

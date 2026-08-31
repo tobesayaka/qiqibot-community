@@ -6,6 +6,7 @@ services:
     ports:
       - "6099:6099"   # NapCat WebUI
       - "3001:3001"   # WebSocket
+      - "3002:3002"   # HTTP API
     volumes:
       - ./napcat/config:/app/napcat/config
       - ./napcat/plugins:/app/napcat/plugins

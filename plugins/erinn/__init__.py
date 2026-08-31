@@ -1,4 +1,4 @@
-from nonebot import get_plugin_config
+from nonebot import get_driver
 from nonebot.plugin import PluginMetadata
 
 from .config import Config
@@ -10,6 +10,14 @@ __plugin_meta__ = PluginMetadata(
     config=Config,
 )
 
-config = get_plugin_config(Config)
 
 from . import handlers as handlers
+
+driver = get_driver()
+
+
+@driver.on_shutdown
+async def _shutdown():
+    from utils.erinn import close_conn
+
+    close_conn()
