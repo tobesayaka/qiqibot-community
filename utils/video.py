@@ -62,5 +62,5 @@ async def download_video(
         return await asyncio.to_thread(
             _download_video_sync, url, save_dir, proxy, cookies_from_browser
         )
-    except Exception as e:
+    except (OSError, ValueError) as e:
         raise ValueError(f"下载失败: {e}") from e
