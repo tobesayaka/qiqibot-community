@@ -33,9 +33,6 @@ data/*
 .DS_Store
 Thumbs.db
 
-# uv
-uv.lock
-
 # ruff
 .ruff_cache/
 

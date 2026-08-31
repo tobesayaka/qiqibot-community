@@ -4,25 +4,19 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
 WORKDIR /app
 
-COPY pyproject.toml bot.py ./
+# 先复制依赖声明，利用 Docker 层缓存
+COPY pyproject.toml uv.lock ./
+
+# 安装运行时依赖（--frozen 不更新 lock，--no-dev 跳过 dev/scripts 依赖）
+RUN uv sync --frozen --no-dev
+
+COPY bot.py ./
 COPY plugins/ plugins/
 COPY middlewares/ middlewares/
 COPY utils/ utils/
 COPY assets/ assets/
 
-RUN uv venv .venv && \
-    uv pip install --python .venv/bin/python \
-    aiosqlite greenlet httpx \
-    "nonebot-adapter-onebot>=2.4.6" \
-    "nonebot-plugin-localstore>=0.7.4" \
-    "nonebot2[fastapi]>=2.5.0,<3.0.0" \
-    pillow \
-    pyyaml \
-    "sqlalchemy>=2.0.52" \
-    uvicorn \
-    yt-dlp
-
-RUN mkdir -p data downloads
+RUN mkdir -p data downloads config
 
 ENV PATH="/app/.venv/bin:$PATH"
 ENV PYTHONUNBUFFERED=1
