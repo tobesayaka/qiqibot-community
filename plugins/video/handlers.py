@@ -76,14 +76,14 @@ async def _download_and_send(bot, event: MessageEvent, url: str):
             await bot.send(event=event, message="好像下载出问题了，文件没找到")
             return
 
-        file_bytes = await asyncio.to_thread(video_path.read_bytes)
         suffix = video_path.suffix.lstrip(".")
         mime = "video/mp4" if suffix == "mp4" else f"video/{suffix}"
-        file_size = len(file_bytes)
+        file_size = await asyncio.to_thread(video_path.stat().st_size)
         threshold = config.video_http_threshold_mb * 1024 * 1024
 
         if file_size > threshold:
             logger.info(f"文件 {file_size / 1024 / 1024:.1f}MB，使用 HTTP API 发送")
+            file_bytes = await asyncio.to_thread(video_path.read_bytes)
             try:
                 ok = await _send_via_http(event, file_bytes, mime)
                 if ok:
@@ -94,6 +94,7 @@ async def _download_and_send(bot, event: MessageEvent, url: str):
                 logger.exception("HTTP API 发送失败")
                 await bot.send(event=event, message=f"视频太大，发送失败：{e}")
         else:
+            file_bytes = await asyncio.to_thread(video_path.read_bytes)
             b64 = base64.b64encode(file_bytes).decode()
             data_uri = f"data:{mime};base64,{b64}"
             await bot.send(event=event, message=MessageSegment.video(file=data_uri))
@@ -120,4 +121,13 @@ async def handle_video(event: MessageEvent, state: T_State):
     except NetworkError:
         pass
 
-    asyncio.create_task(_download_and_send(get_bot(), event, url))
+    task = asyncio.create_task(_download_and_send(get_bot(), event, url))
+    task.add_done_callback(_handle_task_error)
+
+
+def _handle_task_error(task: asyncio.Task):
+    if task.cancelled():
+        return
+    exc = task.exception()
+    if exc:
+        logger.exception("视频下载任务未捕获异常", exc_info=exc)

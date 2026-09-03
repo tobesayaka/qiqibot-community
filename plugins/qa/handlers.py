@@ -116,7 +116,11 @@ def _build_answer_msg(qa_item: QA) -> Message:
 # ── 编辑 (qa edit id|答案) ─────────────────────────────
 
 qa_edit = on_regex(
-    r"\Aqa\s+edit\s+(\d+)\|(.+)\Z", priority=13, block=True, rule=is_allowed()
+    r"\Aqa\s+edit\s+(\d+)\s*\|(.*)\Z",
+    flags=_re.DOTALL,
+    priority=13,
+    block=True,
+    rule=is_allowed(),
 )
 
 
@@ -174,7 +178,11 @@ async def handle_qa_id(state: T_State):
 # ── 创建 (qa 问题|答案) ──────────────────────────────
 
 qa_create = on_regex(
-    r"\Aqa\s+(.+?)\|(.+)\Z", priority=15, block=True, rule=is_allowed()
+    r"\Aqa\s+(.+?)\|(.+)\Z",
+    flags=_re.DOTALL,
+    priority=15,
+    block=True,
+    rule=is_allowed(),
 )
 
 

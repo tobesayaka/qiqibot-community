@@ -3,8 +3,6 @@ from __future__ import annotations
 import base64
 import io
 import json
-import sqlite3
-from pathlib import Path
 
 from nonebot import on_regex
 from nonebot.adapters.onebot.v11 import MessageEvent, MessageSegment
@@ -12,8 +10,9 @@ from nonebot.typing import T_State
 from PIL import Image, ImageDraw, ImageFont
 
 from utils.config import GlobalConfig
+from utils.db import query_one
 from utils.permission import is_allowed
-from utils.production import get_production, search_productions
+from utils.production import DB_PATH, get_item_image, get_production, search_productions
 
 from .config import Config
 
@@ -82,7 +81,7 @@ async def handle_prd_id(event: MessageEvent, state: T_State):
     prod = await get_production(item_id)
     if not prod:
         await prd_id.finish(f"没找到 ID {item_id} 的配方")
-    await prd_id.finish(MessageSegment.image(_render(prod)))
+    await prd_id.finish(MessageSegment.image(await _render(prod)))
 
 
 @prd_search.handle()
@@ -96,7 +95,7 @@ async def handle_prd_search(event: MessageEvent, state: T_State):
         await prd_search.finish(f"没找到和\"{keyword}\"相关的配方")
 
     if len(results) == 1:
-        await prd_search.finish(MessageSegment.image(_render(results[0])))
+        await prd_search.finish(MessageSegment.image(await _render(results[0])))
 
     lines = [f"prd {r['item_id']} | {r['name']} [{r['type_text']}]{r['level_text']}" for r in results]
     await prd_search.finish(
@@ -106,25 +105,13 @@ async def handle_prd_search(event: MessageEvent, state: T_State):
 
 # ── 图片渲染 ──────────────────────────────────────────
 
-_DB_CONN: sqlite3.Connection | None = None
 
-
-def _get_db() -> sqlite3.Connection:
-    global _DB_CONN
-    if _DB_CONN is None:
-        _DB_CONN = sqlite3.connect(str(Path(config.production_db)))
-    return _DB_CONN
-
-
-def _load_icon(item_id: int, size: int | None = None) -> Image.Image | None:
-    conn = _get_db()
-    row = conn.execute(
-        "SELECT image_b64 FROM item_images WHERE item_id = ?", (item_id,)
-    ).fetchone()
-    if not row:
+async def _load_icon(item_id: int, size: int | None = None) -> Image.Image | None:
+    b64 = await get_item_image(item_id)
+    if not b64:
         return None
     try:
-        raw = base64.b64decode(row[0])
+        raw = base64.b64decode(b64)
         img = Image.open(io.BytesIO(raw)).convert("RGBA")
         if size:
             ratio = size / max(img.width, img.height)
@@ -146,21 +133,21 @@ def _fmt_range(min_v: int, max_v: int) -> str:
     return str(min_v) if min_v == max_v else f"{min_v}~{max_v}"
 
 
-def _get_mat_recipe(item_id: int) -> str | None:
+async def _get_mat_recipe(item_id: int) -> str | None:
     """查询材料是否在 productions 表中有制作配方。"""
-    conn = _get_db()
-    row = conn.execute(
+    row = await query_one(
+        DB_PATH,
         "SELECT type_text, level_text FROM productions WHERE item_id = ?", (item_id,)
-    ).fetchone()
+    )
     if row:
-        return f"{row[0]} Rank{row[1]}"
+        return f"{row['type_text']} Rank{row['level_text']}"
     return None
 
 
-def _render(prod: dict) -> str:
+async def _render(prod: dict) -> str:
     """渲染制作配方为图片，返回 base64 data URI。"""
     font = ImageFont.truetype(global_cfg.qiqibot_font, _FONT_SIZE)
-    icon = _load_icon(prod["item_id"])
+    icon = await _load_icon(prod["item_id"])
 
     materials: list[dict] = json.loads(prod["materials"])
     finish_mats: list[dict] = json.loads(prod["finish_materials"]) if prod.get("finish_materials") else []
@@ -186,9 +173,9 @@ def _render(prod: dict) -> str:
     for m in materials:
         alt_names = [a["name"] for a in m.get("alternatives", [])]
         name_str = f"{m['name']}/{'/'.join(alt_names)}" if alt_names else m["name"]
-        recipe = _get_mat_recipe(m["item_id"])
+        recipe = await _get_mat_recipe(m["item_id"])
         recipe_str = f"（{recipe}）" if recipe else ""
-        mat_icon = _load_icon(m["item_id"], _MAT_ICON)
+        mat_icon = await _load_icon(m["item_id"], _MAT_ICON)
         mat_sec.append((mat_icon, f"{name_str} x{m['count']}{recipe_str}", _TEXT))
     sections.append(mat_sec)
 
@@ -197,9 +184,9 @@ def _render(prod: dict) -> str:
         for m in finish_mats:
             alt_names = [a["name"] for a in m.get("alternatives", [])]
             name_str = f"{m['name']}/{'/'.join(alt_names)}" if alt_names else m["name"]
-            recipe = _get_mat_recipe(m["item_id"])
+            recipe = await _get_mat_recipe(m["item_id"])
             recipe_str = f"（{recipe}）" if recipe else ""
-            mat_icon = _load_icon(m["item_id"], _MAT_ICON)
+            mat_icon = await _load_icon(m["item_id"], _MAT_ICON)
             fin_sec.append((mat_icon, f"{name_str} x{m['count']}{recipe_str}", _TEXT))
         sections.append(fin_sec)
 

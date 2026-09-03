@@ -158,7 +158,7 @@ def _render_help() -> str:
 
 
 help_cmd = on_regex(
-    r"\A(help)\Z",
+    r"\A(?i)(help)\Z",
     priority=20,
     block=True,
     rule=is_allowed(),

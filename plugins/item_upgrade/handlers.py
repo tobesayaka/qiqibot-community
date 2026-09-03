@@ -3,7 +3,6 @@ from __future__ import annotations
 import base64
 import io
 import json
-import sqlite3
 
 from nonebot import on_regex
 from nonebot.adapters.onebot.v11 import MessageEvent, MessageSegment
@@ -11,7 +10,8 @@ from nonebot.typing import T_State
 from PIL import Image, ImageDraw, ImageFont
 
 from utils.config import GlobalConfig
-from utils.item_upgrade import get_item_upgrades, search_item_upgrades
+from utils.db import query_one
+from utils.item_upgrade import DB_PATH, get_item_image, get_item_upgrades, search_item_upgrades
 from utils.permission import is_allowed
 
 from .config import Config
@@ -101,16 +101,6 @@ up_id = on_regex(r"\Aup\s+(\d+)\Z", priority=14, block=True, rule=is_allowed())
 # up <关键词> → 模糊搜索
 up_search = on_regex(r"\Aup\s+(\D.*)\Z", priority=15, block=True, rule=is_allowed())
 
-_DB_CONN: sqlite3.Connection | None = None
-
-
-def _get_db() -> sqlite3.Connection:
-    global _DB_CONN
-    if _DB_CONN is None:
-        _DB_CONN = sqlite3.connect(config.item_upgrade_db)
-        _DB_CONN.row_factory = sqlite3.Row
-    return _DB_CONN
-
 
 def _stat_name(raw: str) -> str:
     return _STAT_NAME_MAP.get(raw, raw)
@@ -133,7 +123,7 @@ async def handle_up_id(event: MessageEvent, state: T_State):
     info = await get_item_upgrades(item_id)
     if not info:
         await up_id.finish(f"没找到 ID {item_id} 的可改造装备")
-    await up_id.finish(MessageSegment.image(_render(info)))
+    await up_id.finish(MessageSegment.image(await _render(info)))
 
 
 @up_search.handle()
@@ -149,7 +139,7 @@ async def handle_up_search(event: MessageEvent, state: T_State):
     if len(results) == 1:
         full = await get_item_upgrades(results[0]["item_id"])
         if full:
-            await up_search.finish(MessageSegment.image(_render(full)))
+            await up_search.finish(MessageSegment.image(await _render(full)))
 
     lines = [
         f"up {r['item_id']} | {r['name']} [普{r['upgrade_max']} 宝{r['gem_upgrade_max']}]"
@@ -176,15 +166,12 @@ _COL_COST = 1
 _COL_STAT = 2
 
 
-def _load_icon(item_id: int) -> Image.Image | None:
-    conn = _get_db()
-    row = conn.execute(
-        "SELECT image_b64 FROM item_images WHERE item_id = ?", (item_id,)
-    ).fetchone()
-    if not row:
+async def _load_icon(item_id: int) -> Image.Image | None:
+    b64 = await get_item_image(item_id)
+    if not b64:
         return None
     try:
-        raw = base64.b64decode(row[0])
+        raw = base64.b64decode(b64)
         return Image.open(io.BytesIO(raw)).convert("RGBA")
     except (OSError, ValueError):
         return None
@@ -280,10 +267,10 @@ def _prepare_upgrade_rows(upgrades: list[dict]) -> list[dict]:
     return rows
 
 
-def _render(info: dict) -> str:
+async def _render(info: dict) -> str:
     """渲染装备改造信息为表格图片，返回 base64 data URI。"""
     font = ImageFont.truetype(global_cfg.qiqibot_font, _FONT_SIZE)
-    icon = _load_icon(info["item_id"])
+    icon = await _load_icon(info["item_id"])
 
     upgrade_max = info["upgrade_max"]
     gem_max = info["gem_upgrade_max"]

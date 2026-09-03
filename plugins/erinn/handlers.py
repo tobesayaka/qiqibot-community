@@ -14,7 +14,7 @@ from utils.erinn import (
     get_item_image_b64,
     get_npc_image_b64,
     get_skill_image_b64,
-    query_all,
+    query_all_raw,
     search_items,
 )
 from utils.erinn import (
@@ -61,8 +61,8 @@ _CRAFT_ROW_H = ICON_SIZE + 22 + 16
 # ── 图标加载 ──────────────────────────────────────────
 
 
-def _load_icon(item_id: int, size: int = ICON_SIZE) -> Image.Image | None:
-    b64 = get_item_image_b64(item_id)
+async def _load_icon(item_id: int, size: int = ICON_SIZE) -> Image.Image | None:
+    b64 = await get_item_image_b64(item_id)
     if not b64:
         return None
     try:
@@ -78,8 +78,8 @@ def _load_icon(item_id: int, size: int = ICON_SIZE) -> Image.Image | None:
         return None
 
 
-def _load_skill_icon(skill_en: str) -> Image.Image | None:
-    b64 = get_skill_image_b64(skill_en)
+async def _load_skill_icon(skill_en: str) -> Image.Image | None:
+    b64 = await get_skill_image_b64(skill_en)
     if not b64:
         return None
     try:
@@ -95,8 +95,8 @@ def _load_skill_icon(skill_en: str) -> Image.Image | None:
         return None
 
 
-def _load_npc_icon(npc_id: int) -> Image.Image | None:
-    b64 = get_npc_image_b64(npc_id)
+async def _load_npc_icon(npc_id: int) -> Image.Image | None:
+    b64 = await get_npc_image_b64(npc_id)
     if not b64:
         return None
     try:
@@ -117,14 +117,13 @@ def _load_npc_icon(npc_id: int) -> Image.Image | None:
 _MAX_DEPTH = 3
 
 
-def _get_all_recipes(item_id: int) -> list[dict]:
-    rows = query_all(
+async def _get_all_recipes(item_id: int) -> list[dict]:
+    return await query_all_raw(
         "SELECT * FROM recipes WHERE item_id = ? ORDER BY skill_name", (item_id,)
     )
-    return [dict(r) for r in rows]
 
 
-def _parse_mats(data: list) -> list[dict]:
+async def _parse_mats(data: list) -> list[dict]:
     mats: list[dict] = []
     i = 0
     while i < len(data):
@@ -138,7 +137,7 @@ def _parse_mats(data: list) -> list[dict]:
         elif isinstance(elem, list) and len(elem) >= 2:
             mat_id = elem[0]
             qty = int(elem[1]) if isinstance(elem[1], (int, float)) else 1
-            name = _get_item_name(mat_id) if isinstance(mat_id, int) else str(mat_id)
+            name = await _get_item_name(mat_id) if isinstance(mat_id, int) else str(mat_id)
             mats.append({"item_id": mat_id, "name": name, "count": qty})
         elif isinstance(elem, (int, float)):
             count = 1
@@ -148,7 +147,7 @@ def _parse_mats(data: list) -> list[dict]:
             mats.append(
                 {
                     "item_id": int(elem),
-                    "name": _get_item_name(int(elem)),
+                    "name": await _get_item_name(int(elem)),
                     "count": count,
                 }
             )
@@ -156,21 +155,20 @@ def _parse_mats(data: list) -> list[dict]:
     return mats
 
 
-def _split_recipe(recipe_data: list) -> tuple[list[dict], list[dict]]:
+async def _split_recipe(recipe_data: list) -> tuple[list[dict], list[dict]]:
     if len(recipe_data) == 1 and isinstance(recipe_data[0], list):
         recipe_data = recipe_data[0]
     sep = next((i for i, e in enumerate(recipe_data) if e == 0), None)
     if sep is not None:
-        return _parse_mats(recipe_data[:sep]), _parse_mats(recipe_data[sep + 1 :])
-    return _parse_mats(recipe_data), []
+        return await _parse_mats(recipe_data[:sep]), await _parse_mats(recipe_data[sep + 1 :])
+    return await _parse_mats(recipe_data), []
 
 
-def _get_acquisitions(item_id: int) -> list[dict]:
-    rows = query_all("SELECT * FROM acquisitions WHERE item_id = ?", (item_id,))
-    return [dict(r) for r in rows]
+async def _get_acquisitions(item_id: int) -> list[dict]:
+    return await query_all_raw("SELECT * FROM acquisitions WHERE item_id = ?", (item_id,))
 
 
-def _collect_tree(
+async def _collect_tree(
     item_id: int, visited: set[int] | None = None, depth: int = 0
 ) -> list[tuple[int, str, list[tuple[str, dict]]]]:
     """递归收集配方树。返回 [(item_id, item_name, sections), ...]。"""
@@ -180,9 +178,9 @@ def _collect_tree(
         return []
     visited.add(item_id)
 
-    item_name = _get_item_name(item_id)
-    recipes = _get_all_recipes(item_id)
-    acquisitions = _get_acquisitions(item_id)
+    item_name = await _get_item_name(item_id)
+    recipes = await _get_all_recipes(item_id)
+    acquisitions = await _get_acquisitions(item_id)
 
     if not recipes and not acquisitions:
         return []
@@ -193,7 +191,7 @@ def _collect_tree(
     for recipe in recipes:
         sections.append(("craft", recipe))
         recipe_data = json.loads(recipe["recipe_data"])
-        base_mats, finish_mats = _split_recipe(recipe_data)
+        base_mats, finish_mats = await _split_recipe(recipe_data)
         for mat in base_mats + finish_mats:
             mid = mat.get("item_id")
             if isinstance(mid, int) and mid not in visited:
@@ -206,7 +204,7 @@ def _collect_tree(
         (item_id, item_name, sections)
     ]
     for cid in child_ids:
-        result.extend(_collect_tree(cid, visited, depth + 1))
+        result.extend(await _collect_tree(cid, visited, depth + 1))
     return result
 
 
@@ -245,12 +243,12 @@ def _truncate_text(text, max_w, font, draw):
 # ── 行绘制函数 ────────────────────────────────────────
 
 
-def _draw_craft_row(draw, img, y, right_x, recipe, font, small_font) -> int:
+async def _draw_craft_row(draw, img, y, right_x, recipe, font, small_font) -> int:
     """制作配方行：技能图标 + 材料网格。"""
     skill_en = recipe["skill_name"]
     skill_lv = recipe.get("skill_level")
     recipe_data = json.loads(recipe["recipe_data"])
-    base_mats, finish_mats = _split_recipe(recipe_data)
+    base_mats, finish_mats = await _split_recipe(recipe_data)
     all_mats = base_mats + finish_mats
 
     mat_cols = 5
@@ -260,7 +258,7 @@ def _draw_craft_row(draw, img, y, right_x, recipe, font, small_font) -> int:
 
     # 技能图标
     skill_x = right_x + PAD
-    skill_icon = _load_skill_icon(skill_en)
+    skill_icon = await _load_skill_icon(skill_en)
     if skill_icon:
         _paste_centered(img, skill_icon, skill_x, y, SKILL_W, SKILL_ICON)
     if skill_lv is not None:
@@ -286,7 +284,7 @@ def _draw_craft_row(draw, img, y, right_x, recipe, font, small_font) -> int:
         )
         mid = mat["item_id"]
         if isinstance(mid, int):
-            ic = _load_icon(mid, ICON_SIZE)
+            ic = await _load_icon(mid, ICON_SIZE)
             if ic:
                 _paste_centered(img, ic, cx, cy, MAT_CELL_W, ICON_SIZE)
         name_y = cy + ICON_SIZE + 2
@@ -313,7 +311,7 @@ def _draw_craft_row(draw, img, y, right_x, recipe, font, small_font) -> int:
     return y + row_h + 4
 
 
-def _draw_sell_row(draw, img, y, right_x, acq, font, small_font) -> int:
+async def _draw_sell_row(draw, img, y, right_x, acq, font, small_font) -> int:
     """NPC 购买行：价格 + NPC 图标网格。"""
     data = (
         json.loads(acq["data"])
@@ -335,7 +333,7 @@ def _draw_sell_row(draw, img, y, right_x, acq, font, small_font) -> int:
         nc = ni % per_row
         nx = npc_x + nc * (NPC_ICON + 2)
         ny = npc_y + nr * (NPC_ICON + 2)
-        npc_icon = _load_npc_icon(nid)
+        npc_icon = await _load_npc_icon(nid)
         if npc_icon:
             img.paste(npc_icon, (nx, ny), npc_icon if npc_icon.mode == "RGBA" else None)
 
@@ -356,7 +354,7 @@ def _draw_text_row(draw, y, right_x, label, detail, font, small_font) -> int:
 # ── 卡片绘制 ──────────────────────────────────────────
 
 
-def _calc_card_height(sections, font, small_font) -> int:
+async def _calc_card_height(sections, font, small_font) -> int:
     tmp = Image.new("RGB", (1, 1))
     td = ImageDraw.Draw(tmp)
     _, line_h = _text_size(td, "测", font)
@@ -364,7 +362,7 @@ def _calc_card_height(sections, font, small_font) -> int:
     for stype, data in sections:
         if stype == "craft":
             rd = json.loads(data["recipe_data"])
-            bm, fm = _split_recipe(rd)
+            bm, fm = await _split_recipe(rd)
             mr = (len(bm) + len(fm) + 4) // 5 if (bm or fm) else 0
             right_h += max(mr * _CRAFT_ROW_H, SKILL_ICON + 18) + 4
         elif stype == "sell":
@@ -384,10 +382,10 @@ def _calc_card_height(sections, font, small_font) -> int:
     return max(left_h, right_h) + PAD * 2 + BORDER * 2
 
 
-def _draw_card(img, y, item_id, item_name, sections, font, small_font) -> int:
+async def _draw_card(img, y, item_id, item_name, sections, font, small_font) -> int:
     """绘制一个物品的完整卡片。"""
     draw = ImageDraw.Draw(img)
-    card_h = _calc_card_height(sections, font, small_font)
+    card_h = await _calc_card_height(sections, font, small_font)
     card_x = (img.width - CARD_W) // 2
 
     _draw_border(draw, card_x, y, CARD_W, card_h, CARD_BORDER, BORDER)
@@ -405,7 +403,7 @@ def _draw_card(img, y, item_id, item_name, sections, font, small_font) -> int:
     block_h = ICON_SIZE + 4 + name_h
     block_y = left_y + (left_h - block_h) // 2
 
-    item_icon = _load_icon(item_id)
+    item_icon = await _load_icon(item_id)
     if item_icon:
         _paste_centered(img, item_icon, left_x, block_y, LEFT_W, ICON_SIZE)
     tname = _truncate_text(item_name, LEFT_W - 8, font, draw)
@@ -423,9 +421,9 @@ def _draw_card(img, y, item_id, item_name, sections, font, small_font) -> int:
 
     for stype, data in sections:
         if stype == "craft":
-            row_y = _draw_craft_row(draw, img, row_y, right_x, data, font, small_font)
+            row_y = await _draw_craft_row(draw, img, row_y, right_x, data, font, small_font)
         elif stype == "sell":
-            row_y = _draw_sell_row(draw, img, row_y, right_x, data, font, small_font)
+            row_y = await _draw_sell_row(draw, img, row_y, right_x, data, font, small_font)
         elif stype == "gather":
             d = (
                 json.loads(data["data"])
@@ -467,7 +465,7 @@ def _draw_card(img, y, item_id, item_name, sections, font, small_font) -> int:
 
 
 async def _render(item_id: int) -> str | None:
-    tree = _collect_tree(item_id)
+    tree = await _collect_tree(item_id)
     if not tree:
         return None
 
@@ -484,7 +482,7 @@ async def _render(item_id: int) -> str | None:
 
     y = BORDER
     for iid, iname, sections in tree:
-        y = _draw_card(img, y, iid, iname, sections, font, small_font)
+        y = await _draw_card(img, y, iid, iname, sections, font, small_font)
         y += 8
 
     buf = io.BytesIO()
